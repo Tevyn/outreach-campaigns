@@ -1,25 +1,30 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { Box, Flex } from '@chakra-ui/react';
+import { Routes, Route } from 'react-router-dom';
+import Header from './components/Header';
+import LeftNav from './components/LeftNav';
+import OutreachCampaigns from './components/OutreachCampaigns';
+import VoterSegments from './components/VoterSegments';
+import { VoterSegmentProvider } from './components/VoterSegments';
+import { ChakraProvider } from '@chakra-ui/react';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <VoterSegmentProvider>
+      <Box>
+        <Header />
+        <Flex>
+          <LeftNav />
+          <Box flex={1}>
+            <Routes>
+              <Route path="/voter-segments" element={<VoterSegments />} />
+              <Route path="/outreach-campaigns" element={<OutreachCampaigns />} />
+              <Route path="/" element={<OutreachCampaigns />} />
+            </Routes>
+          </Box>
+        </Flex>
+      </Box>
+    </VoterSegmentProvider>
   );
 }
 
