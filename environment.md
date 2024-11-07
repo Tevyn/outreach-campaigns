@@ -1,4 +1,4 @@
-# How to setup your environment
+# Setting up your environment
 1. Install NVM:
 ```
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
