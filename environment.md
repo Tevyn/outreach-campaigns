@@ -1,9 +1,11 @@
 # Setting up your environment
+[Back to README](README.md)
+
 1. Install NVM:
 ```
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 ```
-If you want, [get the latest version of the above script](https://github.com/nvm-sh/nvm?tab=readme-ov-file#install--update-script)
+- If you want, [get the latest version of the above script](https://github.com/nvm-sh/nvm?tab=readme-ov-file#install--update-script)
 
 2. Close and reopen terminal
 3. Check to see if nvm installed:
@@ -35,4 +37,7 @@ cd outreach-campaigns
 npm start
 ```
 8. In browser, go to http://localhost:3000
+
 9. End app with ctrl+c
+
+[Back to README](README.md)
