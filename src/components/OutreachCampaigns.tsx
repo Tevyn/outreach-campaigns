@@ -467,7 +467,6 @@ const OutreachCampaigns = () => {
                   colorScheme="blue" 
                   mr={3} 
                   onClick={handleCreateOrUpdateCampaign}
-                  isDisabled={hasUnsetRequiredSegments()}
                 >
                   {editingOutreach ? 'Update' : 'Schedule'}
                 </Button>
