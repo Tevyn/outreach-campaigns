@@ -1,3 +1,22 @@
+# Campaign Tools
+
+A comprehensive React-based campaign management application designed to help political campaigns organize and track their voter outreach efforts. This tool provides essential features for modern political campaigns:
+
+### Key Features
+- **Campaign Calendar**: Plan and schedule outreach activities across multiple channels including door knocking, texting, direct mail, and events
+- **Voter Segmentation**: Create and manage targeted voter segments based on demographics, voting history, and engagement levels
+- **Contact Tracking**: Monitor outreach effectiveness with built-in contact logging and progress tracking
+- **Dashboard Analytics**: View real-time metrics on voter touches and campaign performance
+
+### Technology Stack
+- React 18
+- TypeScript
+- Chakra UI for styling
+- React Router for navigation
+- Local Storage for data persistence
+
+---
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
