@@ -7,6 +7,7 @@ import OutreachCampaigns from './components/OutreachCampaigns';
 import VoterSegments from './components/VoterSegments';
 import { VoterSegmentProvider } from './components/VoterSegments';
 import { ChakraProvider } from '@chakra-ui/react';
+import Dashboard from './components/Dashboard';
 
 function App() {
   return (
@@ -19,7 +20,8 @@ function App() {
             <Routes>
               <Route path="/voter-segments" element={<VoterSegments />} />
               <Route path="/outreach-campaigns" element={<OutreachCampaigns />} />
-              <Route path="/" element={<OutreachCampaigns />} />
+              <Route path="dashboard/" element={<Dashboard />} />
+              <Route path="/" element={<Dashboard />} />
             </Routes>
           </Box>
         </Flex>

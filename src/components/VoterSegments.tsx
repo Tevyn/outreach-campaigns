@@ -24,6 +24,8 @@ import {
   Text,
   Checkbox,
   VStack,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 
@@ -41,6 +43,7 @@ export interface VoterSegment {
   votersInSegment: number;
   votersWithAddress: number;
   votersWithPhone: number;
+  isPlaceholder?: boolean;
 }
 
 // Create a context for voter segments
@@ -66,10 +69,9 @@ export const VoterSegmentProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const storedSegments = localStorage.getItem(LOCAL_STORAGE_KEY);
     const parsedSegments = storedSegments ? JSON.parse(storedSegments) : [];
     
-    // Ensure "All voters" segment always exists with 5000 voters
-    const allVotersSegment = parsedSegments.find((s: VoterSegment) => s.id === 0);
-    if (!allVotersSegment) {
-      parsedSegments.unshift({
+    // Ensure required segments exist
+    const requiredSegments = [
+      {
         id: 0,
         name: "All voters",
         description: "Contains all voters",
@@ -82,12 +84,46 @@ export const VoterSegmentProvider: React.FC<{ children: React.ReactNode }> = ({ 
         votersInSegment: 5000,
         votersWithAddress: 4500,
         votersWithPhone: 4000,
-      });
-    } else {
-      allVotersSegment.votersInSegment = 5000; // Ensure votersInSegment is always 5000
-      allVotersSegment.votersWithAddress = 4500;
-      allVotersSegment.votersWithPhone = 4000;
-    }
+      },
+      {
+        id: 1,
+        name: "Base",
+        description: "Your core voters who will likely support your campaign from the start",
+        criteria: {
+          party: [],
+          gender: [],
+          ageRange: [],
+          voteLikelihood: [],
+        },
+        votersInSegment: 0,
+        votersWithAddress: 0,
+        votersWithPhone: 0,
+        isPlaceholder: true
+      },
+      {
+        id: 2,
+        name: "Persuadables",
+        description: "Voters who could be convinced to support your campaign with targeted messaging",
+        criteria: {
+          party: [],
+          gender: [],
+          ageRange: [],
+          voteLikelihood: [],
+        },
+        votersInSegment: 0,
+        votersWithAddress: 0,
+        votersWithPhone: 0,
+        isPlaceholder: true
+      }
+    ];
+
+    // Add any missing required segments
+    requiredSegments.forEach(required => {
+      const exists = parsedSegments.find((s: VoterSegment) => s.name === required.name);
+      if (!exists) {
+        parsedSegments.push(required);
+      }
+    });
     
     return parsedSegments;
   });
@@ -149,7 +185,23 @@ const VoterSegments: React.FC = () => {
 
   const handleSaveSegment = () => {
     const updatedSegments = isEditing
-      ? segments.map(s => s.id === currentSegment.id ? currentSegment : s)
+      ? segments.map(s => {
+          if (s.id === currentSegment.id) {
+            if (s.id === 1 || s.id === 2) {
+              const votersInSegment = Math.floor(Math.random() * (2000 - 500 + 1)) + 500;
+              return {
+                ...currentSegment,
+                votersInSegment: s.criteria !== currentSegment.criteria ? votersInSegment : s.votersInSegment,
+                votersWithAddress: s.criteria !== currentSegment.criteria ? Math.floor(votersInSegment * (Math.random() * (1 - 0.5) + 0.5)) : s.votersWithAddress,
+                votersWithPhone: s.criteria !== currentSegment.criteria ? Math.floor(votersInSegment * (Math.random() * (1 - 0.5) + 0.5)) : s.votersWithPhone,
+                isPlaceholder: false
+              };
+            } else {
+              return { ...currentSegment, isPlaceholder: false };
+            }
+          }
+          return s;
+        })
       : [...segments, currentSegment];
     setSegments(updatedSegments);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedSegments));
@@ -157,7 +209,8 @@ const VoterSegments: React.FC = () => {
   };
 
   const handleDeleteSegment = (id: number) => {
-    if (id === 0) return; // Prevent deletion of "All voters" segment
+    // Prevent deletion of "All voters", Base, and Persuadables segments
+    if (id === 0 || id === 1 || id === 2) return;
     const updatedSegments = segments.filter(s => s.id !== id);
     setSegments(updatedSegments);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedSegments));
@@ -189,9 +242,17 @@ const VoterSegments: React.FC = () => {
     );
   };
 
+  const hasPlaceholderSegments = segments.some(s => s.isPlaceholder);
+
   return (
     <Box p={8}>
       <Heading mb={6}>Voter Segments</Heading>
+      {hasPlaceholderSegments && (
+        <Alert status="info" mb={4}>
+          <AlertIcon />
+          Set up your Base and Persuadable voter segments to help organize your campaign outreach.
+        </Alert>
+      )}
       <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={() => handleOpenModal()} mb={4}>
         Add New Segment
       </Button>
@@ -209,7 +270,7 @@ const VoterSegments: React.FC = () => {
         </Thead>
         <Tbody>
           {segments.map((segment) => (
-            <Tr key={segment.id}>
+            <Tr key={segment.id} bg={segment.isPlaceholder ? "blue.50" : undefined}>
               <Td>{segment.name}</Td>
               <Td>{segment.description}</Td>
               <Td>{segment.id === 0 ? "All voters" : formatCriteria(segment.criteria)}</Td>
@@ -219,20 +280,45 @@ const VoterSegments: React.FC = () => {
               <Td>
                 {segment.id !== 0 && (
                   <>
-                    <IconButton
-                      aria-label="Edit segment"
-                      icon={<EditIcon />}
-                      size="sm"
-                      mr={2}
-                      onClick={() => handleOpenModal(segment)}
-                    />
-                    <IconButton
-                      aria-label="Delete segment"
-                      icon={<DeleteIcon />}
-                      size="sm"
-                      colorScheme="red"
-                      onClick={() => handleDeleteSegment(segment.id)}
-                    />
+                    {segment.id === 1 || segment.id === 2 ? (
+                      <Button
+                        size="sm"
+                        mr={2}
+                        colorScheme="blue"
+                        onClick={() => {
+                          const votersInSegment = Math.floor(Math.random() * (2000 - 500 + 1)) + 500;
+                          setCurrentSegment({
+                            ...segment,
+                            votersInSegment: segment.criteria !== currentSegment.criteria ? votersInSegment : segment.votersInSegment,
+                            votersWithAddress: segment.criteria !== currentSegment.criteria ? Math.floor(votersInSegment * (Math.random() * (1 - 0.5) + 0.5)) : segment.votersWithAddress,
+                            votersWithPhone: segment.criteria !== currentSegment.criteria ? Math.floor(votersInSegment * (Math.random() * (1 - 0.5) + 0.5)) : segment.votersWithPhone,
+                            isPlaceholder: false
+                          });
+                          handleOpenModal(segment);
+                        }}
+                      >
+                        {segment.isPlaceholder ? 
+                          `Set your ${segment.name.toLowerCase()}` : 
+                          `Edit your ${segment.name.toLowerCase()}`}
+                      </Button>
+                    ) : (
+                      <>
+                        <IconButton
+                          aria-label="Edit segment"
+                          icon={<EditIcon />}
+                          size="sm"
+                          mr={2}
+                          onClick={() => handleOpenModal(segment)}
+                        />
+                        <IconButton
+                          aria-label="Delete segment"
+                          icon={<DeleteIcon />}
+                          size="sm"
+                          colorScheme="red"
+                          onClick={() => handleDeleteSegment(segment.id)}
+                        />
+                      </>
+                    )}
                   </>
                 )}
               </Td>

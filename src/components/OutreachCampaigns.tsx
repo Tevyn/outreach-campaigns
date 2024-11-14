@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Heading, Grid, Button, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, FormControl, FormLabel, Input, Select, Checkbox, VStack, Text, IconButton, Flex, Link, Textarea, Progress } from '@chakra-ui/react';
-import { EditIcon, AddIcon } from '@chakra-ui/icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Heading, Grid, Button, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, FormControl, FormLabel, Input, Select, Checkbox, VStack, Text, IconButton, Flex, Link, Textarea, Progress, Alert, AlertIcon } from '@chakra-ui/react';
+import { EditIcon, AddIcon, CheckIcon, InfoIcon } from '@chakra-ui/icons';
 import { useVoterSegments } from './VoterSegments';
 import { Link as RouterLink } from 'react-router-dom';
 
 const phases = ['Awareness', 'Contact', 'Get Out The Vote'];
 const weeks = Array.from({ length: 12 }, (_, i) => i + 1);
 const channels = ['Door Knocking', 'Direct Mail', 'Phone Banking', 'Digital Advertising', 'Texting', 'Events & Rallies', 'Yard Signs'];
-const touchesPerVoterOptions = [0.25, 0.33, 0.5, 0.67, 0.75, 1];
+const COST_PER_TEXT = 0.035;
 
 interface Campaign {
   id: number;
@@ -15,68 +15,66 @@ interface Campaign {
   channel: string;
   weeks: number[];
   voterSegmentId: number;
-  touchesPerVoter: number;
-  contacts: number;
   script: string;
   actualContacts: { [week: number]: number };
+  paidWeeks?: { [week: number]: boolean };
 }
 
 const OutreachCampaigns = () => {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [outreach, setCampaigns] = useState<Campaign[]>([]);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [newCampaign, setNewCampaign] = useState<Campaign>({
+  const [newOutreach, setNewCampaign] = useState<Campaign>({
     id: 0,
     name: '',
     channel: '',
     weeks: [],
     voterSegmentId: 0,
-    touchesPerVoter: 0.25,
-    contacts: 0,
     script: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-    actualContacts: {}
+    actualContacts: {},
+    paidWeeks: {}
   });
-  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [editingOutreach, setEditingCampaign] = useState<Campaign | null>(null);
   const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
   const [currentScript, setCurrentScript] = useState('');
-  const [currentScriptCampaign, setCurrentScriptCampaign] = useState('');
+  const [currentScriptOutreach, setCurrentScriptCampaign] = useState('');
   const [isEditingScript, setIsEditingScript] = useState(false);
   const { segments } = useVoterSegments();
   const [isLogContactsModalOpen, setIsLogContactsModalOpen] = useState(false);
-  const [currentLoggingCampaign, setCurrentLoggingCampaign] = useState<Campaign | null>(null);
+  const [currentLoggingOutreach, setCurrentLoggingCampaign] = useState<Campaign | null>(null);
   const [contactsToLog, setContactsToLog] = useState(0);
   const [currentLoggingWeek, setCurrentLoggingWeek] = useState<number | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [currentPaymentOutreach, setCurrentPaymentCampaign] = useState<Campaign | null>(null);
+  const [currentPaymentWeek, setCurrentPaymentWeek] = useState<number | null>(null);
 
-  // Load campaigns from localStorage on component mount
-  useEffect(() => {
-    loadCampaigns();
+  const loadCampaigns = useCallback(() => {
+    const storedOutreach = localStorage.getItem('campaigns');
+    if (storedOutreach) {
+      setCampaigns(JSON.parse(storedOutreach));
+    } else {
+      const defaultCampaigns = getDefaultCampaigns();
+      saveCampaigns(defaultCampaigns);
+    }
   }, []);
 
-  const loadCampaigns = () => {
-    const storedCampaigns = localStorage.getItem('campaigns');
-    if (storedCampaigns) {
-      setCampaigns(JSON.parse(storedCampaigns));
-    }
-  };
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
 
-  const saveCampaigns = (campaignsToSave: Campaign[]) => {
-    localStorage.setItem('campaigns', JSON.stringify(campaignsToSave));
-    setCampaigns(campaignsToSave);
+  const saveCampaigns = (outreachToSave: Campaign[]) => {
+    localStorage.setItem('campaigns', JSON.stringify(outreachToSave));
+    setCampaigns(outreachToSave);
   };
 
   const handleCreateOrUpdateCampaign = () => {
-    const updatedCampaign = {
-      ...newCampaign,
-      contacts: calculateContacts(newCampaign.voterSegmentId, newCampaign.touchesPerVoter)
-    };
-
-    let updatedCampaigns: Campaign[];
-    if (editingCampaign) {
-      updatedCampaigns = campaigns.map(c => c.id === editingCampaign.id ? updatedCampaign : c);
+    let updatedOutreach: Campaign[];
+    if (editingOutreach) {
+      updatedOutreach = outreach.map(c => c.id === editingOutreach.id ? newOutreach : c);
     } else {
-      updatedCampaigns = [...campaigns, { ...updatedCampaign, id: Date.now(), actualContacts: {} }];
+      updatedOutreach = [...outreach, { ...newOutreach, id: Date.now(), actualContacts: {}, paidWeeks: {} }];
     }
 
-    saveCampaigns(updatedCampaigns);
+    saveCampaigns(updatedOutreach);
 
     setNewCampaign({
       id: 0,
@@ -84,21 +82,17 @@ const OutreachCampaigns = () => {
       channel: '',
       weeks: [],
       voterSegmentId: 0,
-      touchesPerVoter: 0.25,
-      contacts: 0,
       script: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      actualContacts: {}
+      actualContacts: {},
+      paidWeeks: {}
     });
     setEditingCampaign(null);
     onClose();
   };
 
-  const handleEditCampaign = (campaign: Campaign) => {
-    setEditingCampaign(campaign);
-    setNewCampaign({
-      ...campaign,
-      contacts: calculateContacts(campaign.voterSegmentId, campaign.touchesPerVoter)
-    });
+  const handleEditCampaign = (outreach: Campaign) => {
+    setEditingCampaign(outreach);
+    setNewCampaign(outreach);
     onOpen();
   };
 
@@ -111,17 +105,17 @@ const OutreachCampaigns = () => {
     }));
   };
 
-  const getCampaignProgress = (campaign: Campaign, currentWeek: number) => {
-    const startWeek = Math.min(...campaign.weeks);
-    const endWeek = Math.max(...campaign.weeks);
+  const getOutreachProgress = (outreach: Campaign, currentWeek: number) => {
+    const startWeek = Math.min(...outreach.weeks);
+    const endWeek = Math.max(...outreach.weeks);
     const totalWeeks = endWeek - startWeek + 1;
-    const currentCampaignWeek = currentWeek - startWeek + 1;
-    return `Week ${currentCampaignWeek} of ${totalWeeks}`;
+    const currentOutreachWeek = currentWeek - startWeek + 1;
+    return `Week ${currentOutreachWeek} of ${totalWeeks}`;
   };
 
-  const handleOpenScript = (campaign: Campaign) => {
-    setCurrentScript(campaign.script);
-    setCurrentScriptCampaign(campaign.name);
+  const handleOpenScript = (outreach: Campaign) => {
+    setCurrentScript(outreach.script);
+    setCurrentScriptCampaign(outreach.name);
     setIsScriptModalOpen(true);
     setIsEditingScript(false);
   };
@@ -131,43 +125,21 @@ const OutreachCampaigns = () => {
   };
 
   const handleSaveScript = () => {
-    setCampaigns(campaigns.map(c => c.name === currentScriptCampaign ? { ...c, script: currentScript } : c));
+    setCampaigns(outreach.map(c => c.name === currentScriptOutreach ? { ...c, script: currentScript } : c));
     setIsEditingScript(false);
   };
 
-  const calculateContacts = (segmentId: number, touchesPerVoter: number) => {
-    const segment = segments.find(s => s.id === segmentId);
-    if (!segment) return 0;
-    return Math.round((segment.votersInSegment || 0) * touchesPerVoter);
-  };
-
-  const handleVoterSegmentChange = (segmentId: number) => {
-    setNewCampaign(prev => ({
-      ...prev,
-      voterSegmentId: segmentId,
-      contacts: calculateContacts(segmentId, prev.touchesPerVoter)
-    }));
-  };
-
-  const handleTouchesPerVoterChange = (touches: number) => {
-    setNewCampaign(prev => ({
-      ...prev,
-      touchesPerVoter: touches,
-      contacts: calculateContacts(prev.voterSegmentId, touches)
-    }));
-  };
-
-  const handleOpenLogContacts = (campaign: Campaign, week: number) => {
-    setCurrentLoggingCampaign(campaign);
+  const handleOpenLogContacts = (outreach: Campaign, week: number) => {
+    setCurrentLoggingCampaign(outreach);
     setCurrentLoggingWeek(week);
     setContactsToLog(0);
     setIsLogContactsModalOpen(true);
   };
 
   const handleLogContacts = () => {
-    if (currentLoggingCampaign && currentLoggingWeek !== null) {
-      const updatedCampaigns = campaigns.map(c => 
-        c.id === currentLoggingCampaign.id 
+    if (currentLoggingOutreach && currentLoggingWeek !== null) {
+      const updatedOutreach = outreach.map(c => 
+        c.id === currentLoggingOutreach.id 
           ? { 
               ...c, 
               actualContacts: { 
@@ -177,54 +149,203 @@ const OutreachCampaigns = () => {
             } 
           : c
       );
-      saveCampaigns(updatedCampaigns);
+      saveCampaigns(updatedOutreach);
     }
     setIsLogContactsModalOpen(false);
   };
 
+  const handleOpenPayment = (outreach: Campaign, week: number) => {
+    setCurrentPaymentCampaign(outreach);
+    setCurrentPaymentWeek(week);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleConfirmPayment = () => {
+    if (currentPaymentOutreach && currentPaymentWeek !== null) {
+      const segment = segments.find(s => s.id === currentPaymentOutreach.voterSegmentId);
+      const targetContacts = segment?.votersInSegment || 0;
+      
+      const updatedOutreach = outreach.map(c =>
+        c.id === currentPaymentOutreach.id
+          ? {
+              ...c,
+              paidWeeks: {
+                ...c.paidWeeks,
+                [currentPaymentWeek]: true
+              },
+              actualContacts: {
+                ...c.actualContacts,
+                [currentPaymentWeek]: targetContacts
+              }
+            }
+          : c
+      );
+      saveCampaigns(updatedOutreach);
+    }
+    setIsPaymentModalOpen(false);
+  };
+
   const handleDeleteCampaign = () => {
-    if (editingCampaign) {
-      const updatedCampaigns = campaigns.filter(c => c.id !== editingCampaign.id);
-      saveCampaigns(updatedCampaigns);
+    if (editingOutreach) {
+      const updatedOutreach = outreach.filter(c => c.id !== editingOutreach.id);
+      saveCampaigns(updatedOutreach);
       setEditingCampaign(null);
       onClose();
     }
   };
 
-  const renderCampaignBox = (campaign: Campaign, currentWeek: number) => {
+  const renderOutreachBox = (outreach: Campaign, currentWeek: number) => {
     const boxWidth = '100%';
-    const weeklyGoal = Math.round(campaign.contacts / campaign.weeks.length);
-    const actualContacts = campaign.actualContacts[currentWeek] || 0;
+    const actualContacts = outreach.actualContacts[currentWeek] || 0;
+    const isPaid = outreach.paidWeeks?.[currentWeek];
+    const segment = segments.find(s => s.id === outreach.voterSegmentId);
+    const isPlaceholder = segment?.isPlaceholder;
+    const cost = segment && !isPlaceholder ? (segment.votersInSegment * COST_PER_TEXT).toFixed(2) : '???';
+    const totalWeeks = outreach.weeks.length;
+    const targetContacts = segment && !isPlaceholder ? Math.ceil(segment.votersInSegment / totalWeeks) : 0;
+    const progressValue = targetContacts > 0 ? (actualContacts / targetContacts) * 100 : 0;
+
     return (
-      <Box key={`${campaign.id}-${currentWeek}`} width={boxWidth} bg="blue.50" p={2} borderRadius="md" boxShadow="sm" mb={2} ml={1} mr={1}>
-        <Text fontSize="xs" mb={1}><strong>{getCampaignProgress(campaign, currentWeek)}</strong></Text>
-        <Text fontWeight="bold" fontSize="sm">{campaign.name}</Text>
-        <Text fontSize="xs" color="gray.600">{campaign.channel}</Text>
-        <Text fontSize="xs"><strong>Weekly Goal:</strong> {weeklyGoal}</Text>
-        <Text fontSize="xs"><strong>Actual:</strong> {actualContacts}</Text>
-        <Progress value={(actualContacts / weeklyGoal) * 100} size="xs" mt={1} />
+      <Box key={`${outreach.id}-${currentWeek}`} width={boxWidth} bg="blue.50" p={2} borderRadius="md" boxShadow="sm" mb={2} ml={1} mr={1}>
+        <Text fontSize="xs" mb={1}><strong>{getOutreachProgress(outreach, currentWeek)}</strong></Text>
+        <Text fontWeight="bold" fontSize="sm">{outreach.name}</Text>
+        <Text fontSize="xs" color="gray.600">{outreach.channel}</Text>
+        <Progress value={progressValue} size="sm" colorScheme="green" mt={2} mb={2} />
+        <Text fontSize="xs">
+          <strong>Progress:</strong> {actualContacts.toLocaleString()} / {isPlaceholder ? "Unknown" : targetContacts.toLocaleString()}
+          {totalWeeks > 1 && (
+            <Text fontSize="xs" color="gray.600">
+              ({targetContacts.toLocaleString()} per week for {totalWeeks} weeks)
+            </Text>
+          )}
+        </Text>
         <Flex justifyContent="space-between" alignItems="center" mt={1}>
-          <Link fontSize="xs" color="blue.500" onClick={() => handleOpenScript(campaign)}>
+          <Link fontSize="xs" color="blue.500" onClick={() => handleOpenScript(outreach)}>
             View Script
           </Link>
+        </Flex>
+        <Flex justifyContent="space-between" alignItems="center" mt={2}>
+          {outreach.channel === 'Texting' ? (
+            isPaid ? (
+              <Flex alignItems="center" color="green.500">
+                <CheckIcon mr={1} />
+                <Text fontSize="sm" fontWeight="medium">Payment Confirmed</Text>
+              </Flex>
+            ) : (
+              <Button 
+                size="xs" 
+                colorScheme="blue" 
+                onClick={() => handleOpenPayment(outreach, currentWeek)}
+                isDisabled={isPlaceholder}
+              >
+                Pay ${cost}
+              </Button>
+            )
+          ) : (
+            <Button 
+              size="xs" 
+              leftIcon={<AddIcon />} 
+              colorScheme="blue" 
+              onClick={() => handleOpenLogContacts(outreach, currentWeek)}
+              isDisabled={isPlaceholder}
+            >
+              Log Contacts
+            </Button>
+          )}
           <IconButton
-            aria-label="Edit campaign"
+            aria-label="Edit outreach"
             icon={<EditIcon />}
             size="xs"
-            onClick={() => handleEditCampaign(campaign)}
+            onClick={() => handleEditCampaign(outreach)}
           />
         </Flex>
-        <Button size="xs" leftIcon={<AddIcon />} mt={2} onClick={() => handleOpenLogContacts(campaign, currentWeek)}>
-          Log Contacts
-        </Button>
       </Box>
     );
   };
 
+  const hasUnsetRequiredSegments = () => {
+    return segments.some(s => (s.id === 1 || s.id === 2) && s.isPlaceholder);
+  };
+
+  const getDefaultCampaigns = (): Campaign[] => {
+    return [
+      {
+        id: 1,
+        name: "Launch Event",
+        channel: "Events & Rallies",
+        weeks: [1],
+        voterSegmentId: 1, // Base segment
+        script: "Join us for our campaign launch event! Meet the candidate and learn about our vision for the future.",
+        actualContacts: {},
+        paidWeeks: {}
+      },
+      {
+        id: 2,
+        name: "Launch Text",
+        channel: "Texting",
+        weeks: [2],
+        voterSegmentId: 0, // All voters
+        script: "Our campaign has officially launched! Visit our website to learn more about our vision for the community.",
+        actualContacts: {},
+        paidWeeks: {}
+      },
+      {
+        id: 3,
+        name: "Persuadables Canvassing",
+        channel: "Door Knocking",
+        weeks: [5, 6, 7, 8],
+        voterSegmentId: 2, // Persuadables segment
+        script: "Hi! I'm volunteering with [Candidate]'s campaign. Do you have a few minutes to discuss the upcoming election?",
+        actualContacts: {},
+        paidWeeks: {}
+      },
+      {
+        id: 4,
+        name: "GOTV Text",
+        channel: "Texting",
+        weeks: [9],
+        voterSegmentId: 1, // Base segment
+        script: "Election day is coming up! Make your voice heard by voting for [Candidate] on [Election Date].",
+        actualContacts: {},
+        paidWeeks: {}
+      },
+      {
+        id: 5,
+        name: "Persuadables Text",
+        channel: "Texting",
+        weeks: [9],
+        voterSegmentId: 2, // Persuadables segment
+        script: "Election day is approaching! Learn more about [Candidate]'s vision at [Website].",
+        actualContacts: {},
+        paidWeeks: {}
+      },
+      {
+        id: 6,
+        name: "Election Day Text",
+        channel: "Texting",
+        weeks: [12],
+        voterSegmentId: 0, // All voters
+        script: "Today is election day! Polls are open until [Time]. Your polling location is [Location]. Every vote counts!",
+        actualContacts: {},
+        paidWeeks: {}
+      }
+    ];
+  };
+
   return (
     <Box p={8}>
-      <Heading mb={6}>Outreach Campaigns</Heading>
-      <Button colorScheme="blue" mb={6} onClick={() => { 
+      <Heading mb={6}>Campaign Calendar</Heading>
+      {hasUnsetRequiredSegments() && (
+        <Alert status="info" mb={6}>
+          <AlertIcon />
+          <Box>
+            <Text>
+              Before scheduling targeted outreach, you'll need to <Link as={RouterLink} to="/voter-segments" color="blue.500">set up your voter segments</Link>. This helps you effectively reach different groups of voters.
+            </Text>
+          </Box>
+        </Alert>
+      )}
+      <Button leftIcon={<AddIcon />} colorScheme="blue" mb={6} onClick={() => { 
         setEditingCampaign(null); 
         setNewCampaign({
           id: 0,
@@ -232,13 +353,12 @@ const OutreachCampaigns = () => {
           channel: '',
           weeks: [],
           voterSegmentId: 0,
-          touchesPerVoter: 0.25,
-          contacts: calculateContacts(0, 0.25),
           script: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-          actualContacts: {}
+          actualContacts: {},
+          paidWeeks: {}
         });
         onOpen(); 
-      }}>Create Campaign</Button>
+      }}>Schedule Outreach</Button>
       {phases.map((phase, phaseIndex) => (
         <Box key={phase} mb={6}>
           <Heading size="md" mb={4}>{phase}</Heading>
@@ -249,8 +369,8 @@ const OutreachCampaigns = () => {
                   <Box textAlign="center" fontWeight="bold" p={2} borderBottomWidth={1}>Week {week}</Box>
                   <Box p={2} minHeight="3rem">
                     <VStack spacing={2} align="stretch">
-                      {campaigns.filter(c => c.weeks.includes(week)).map(campaign => {
-                        return renderCampaignBox(campaign, week);
+                      {outreach.filter(c => c.weeks.includes(week)).map(outreach => {
+                        return renderOutreachBox(outreach, week);
                       })}
                     </VStack>
                   </Box>
@@ -264,16 +384,26 @@ const OutreachCampaigns = () => {
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>{editingCampaign ? 'Edit Campaign' : 'Create New Campaign'}</ModalHeader>
+          <ModalHeader>{editingOutreach ? 'Edit Outreach' : 'Schedule New Outreach'}</ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
+          <ModalBody>            
+            {hasUnsetRequiredSegments() && (
+              <Alert status="info" mb={4}>
+                <AlertIcon />
+                <Box>
+                  <Text>
+                    Before scheduling targeted outreach, you'll need to <Link as={RouterLink} to="/voter-segments" color="blue.500">set up your voter segments</Link>. This helps you effectively reach different groups of voters.
+                  </Text>
+                </Box>
+              </Alert>
+            )}
             <FormControl>
-              <FormLabel>Campaign Name</FormLabel>
-              <Input value={newCampaign.name} onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })} />
+              <FormLabel>Outreach Name</FormLabel>
+              <Input value={newOutreach.name} onChange={(e) => setNewCampaign({ ...newOutreach, name: e.target.value })} />
             </FormControl>
             <FormControl mt={4}>
               <FormLabel>Channel</FormLabel>
-              <Select value={newCampaign.channel} onChange={(e) => setNewCampaign({ ...newCampaign, channel: e.target.value })}>
+              <Select value={newOutreach.channel} onChange={(e) => setNewCampaign({ ...newOutreach, channel: e.target.value })}>
                 <option value="">Select a channel</option>
                 {channels.map(channel => <option key={channel} value={channel}>{channel}</option>)}
               </Select>
@@ -284,7 +414,7 @@ const OutreachCampaigns = () => {
                 {weeks.map(week => (
                   <Checkbox
                     key={week}
-                    isChecked={newCampaign.weeks.includes(week)}
+                    isChecked={newOutreach.weeks.includes(week)}
                     onChange={() => handleWeekToggle(week)}
                   >
                     Week {week}
@@ -295,50 +425,51 @@ const OutreachCampaigns = () => {
             <FormControl mt={4}>
               <FormLabel>Voter Segment</FormLabel>
               <Select
-                value={newCampaign.voterSegmentId}
-                onChange={(e) => handleVoterSegmentChange(Number(e.target.value))}
+                value={newOutreach.voterSegmentId}
+                onChange={(e) => setNewCampaign({ ...newOutreach, voterSegmentId: Number(e.target.value) })}
               >
-                {segments.map(segment => (
-                  <option key={segment.id} value={segment.id}>
-                    {segment.name} ({(segment.votersInSegment || 0).toLocaleString()} voters)
-                  </option>
-                ))}
+                {segments
+                  .filter(segment => !(segment.id === 1 && segment.isPlaceholder) && !(segment.id === 2 && segment.isPlaceholder))
+                  .map(segment => (
+                    <option key={segment.id} value={segment.id}>
+                      {segment.name} ({(segment.votersInSegment || 0).toLocaleString()} voters)
+                    </option>
+                  ))}
               </Select>
-              {segments.length === 1 && segments[0].id === 0 && (
-                <Text mt={2} fontSize="sm" color="blue.500">
-                  <Link as={RouterLink} to="/voter-segments">
-                    Create a new voter segment
-                  </Link>{' '}
-                  to target specific groups of voters.
+            </FormControl>
+            {segments.length === 1 && segments[0].id === 0 && (
+              <Flex mt={2} alignItems="center" color="blue.500">
+                <InfoIcon mr={2} />
+                <Link as={RouterLink} to="/voter-segments">
+                  Create a voter segment to target specific groups of voters
+                </Link>
+              </Flex>
+            )}
+            {newOutreach.channel === 'Texting' && (
+              <Box mt={4} p={4} bg="blue.50" borderRadius="md">
+                <Text fontWeight="bold">Estimated Cost</Text>
+                <Text>
+                  {segments.find(s => s.id === newOutreach.voterSegmentId)?.votersInSegment || 0} voters × ${COST_PER_TEXT.toFixed(3)} per text = 
+                  ${((segments.find(s => s.id === newOutreach.voterSegmentId)?.votersInSegment || 0) * COST_PER_TEXT).toFixed(2)}
                 </Text>
-              )}
-            </FormControl>
-            <FormControl mt={4}>
-              <FormLabel>Touches per Voter</FormLabel>
-              <Select
-                value={newCampaign.touchesPerVoter}
-                onChange={(e) => handleTouchesPerVoterChange(Number(e.target.value))}
-              >
-                {touchesPerVoterOptions.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl mt={4}>
-              <FormLabel>Estimated Contacts</FormLabel>
-              <Input value={newCampaign.contacts} isReadOnly />
-            </FormControl>
+              </Box>
+            )}
           </ModalBody>
           <ModalFooter>
             <Flex width="100%" justifyContent="space-between">
-              {editingCampaign && (
+              {editingOutreach && (
                 <Button colorScheme="red" variant="outline" onClick={handleDeleteCampaign}>
-                  Delete Campaign
+                  Delete Outreach
                 </Button>
               )}
               <Flex>
-                <Button colorScheme="blue" mr={3} onClick={handleCreateOrUpdateCampaign}>
-                  {editingCampaign ? 'Update' : 'Create'}
+                <Button 
+                  colorScheme="blue" 
+                  mr={3} 
+                  onClick={handleCreateOrUpdateCampaign}
+                  isDisabled={hasUnsetRequiredSegments()}
+                >
+                  {editingOutreach ? 'Update' : 'Schedule'}
                 </Button>
                 <Button variant="ghost" onClick={onClose}>Cancel</Button>
               </Flex>
@@ -350,7 +481,7 @@ const OutreachCampaigns = () => {
       <Modal isOpen={isScriptModalOpen} onClose={() => setIsScriptModalOpen(false)} size="xl">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>{currentScriptCampaign} Script</ModalHeader>
+          <ModalHeader>{currentScriptOutreach} Script</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             {isEditingScript ? (
@@ -381,7 +512,7 @@ const OutreachCampaigns = () => {
       <Modal isOpen={isLogContactsModalOpen} onClose={() => setIsLogContactsModalOpen(false)}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Log Contacts for {currentLoggingCampaign?.name} - Week {currentLoggingWeek}</ModalHeader>
+          <ModalHeader>Log Contacts for {currentLoggingOutreach?.name} - Week {currentLoggingWeek}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <FormControl>
@@ -398,6 +529,31 @@ const OutreachCampaigns = () => {
               Log Contacts
             </Button>
             <Button variant="ghost" onClick={() => setIsLogContactsModalOpen(false)}>Cancel</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Confirm Payment for {currentPaymentOutreach?.name} - Week {currentPaymentWeek}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {currentPaymentOutreach && (
+              <Text>
+                Are you sure you want to pay ${(
+                  (segments.find(s => s.id === currentPaymentOutreach.voterSegmentId)?.votersInSegment || 0) * COST_PER_TEXT
+                ).toFixed(2)} for {
+                  segments.find(s => s.id === currentPaymentOutreach.voterSegmentId)?.votersInSegment || 0
+                } text messages?
+              </Text>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={handleConfirmPayment}>
+              Confirm Payment
+            </Button>
+            <Button variant="ghost" onClick={() => setIsPaymentModalOpen(false)}>Cancel</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
