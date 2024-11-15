@@ -238,7 +238,7 @@ const OutreachCampaigns = () => {
                 onClick={() => handleOpenPayment(outreach, currentWeek)}
                 isDisabled={isPlaceholder}
               >
-                Pay ${cost}
+                Pay ${cost} to send
               </Button>
             )
           ) : (

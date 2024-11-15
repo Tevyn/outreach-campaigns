@@ -26,6 +26,7 @@ import {
   VStack,
   Alert,
   AlertIcon,
+  FormErrorMessage,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 
@@ -157,6 +158,7 @@ const VoterSegments: React.FC = () => {
     votersWithPhone: 0,
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [nameError, setNameError] = useState('');
 
   const handleOpenModal = (segment?: VoterSegment) => {
     if (segment) {
@@ -180,10 +182,16 @@ const VoterSegments: React.FC = () => {
       });
       setIsEditing(false);
     }
+    setNameError('');
     onOpen();
   };
 
   const handleSaveSegment = () => {
+    if (!currentSegment.name.trim()) {
+      setNameError('Name is required');
+      return;
+    }
+
     const updatedSegments = isEditing
       ? segments.map(s => {
           if (s.id === currentSegment.id) {
@@ -333,12 +341,18 @@ const VoterSegments: React.FC = () => {
           <ModalHeader>{isEditing ? 'Edit Segment' : 'Add New Segment'}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <FormControl>
+            <FormControl isInvalid={!!nameError}>
               <FormLabel>Name</FormLabel>
               <Input
                 value={currentSegment.name}
-                onChange={(e) => setCurrentSegment({ ...currentSegment, name: e.target.value })}
+                onChange={(e) => {
+                  setCurrentSegment({ ...currentSegment, name: e.target.value });
+                  if (e.target.value.trim()) {
+                    setNameError('');
+                  }
+                }}
               />
+              <FormErrorMessage>{nameError}</FormErrorMessage>
             </FormControl>
             <FormControl mt={4}>
               <FormLabel>Description</FormLabel>

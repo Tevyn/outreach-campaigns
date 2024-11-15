@@ -1,6 +1,6 @@
-# Campaign Tools
+# Campaign Tools Prototype
 
-A comprehensive React-based campaign management application designed to help political campaigns organize and track their voter outreach efforts. This tool provides essential features for modern political campaigns:
+A prototype for a React-based campaign management application designed to help political campaigns organize and track their voter outreach efforts. This prototype provides various features for modern political campaigns:
 
 ### Key Features
 - **Campaign Calendar**: Plan and schedule outreach activities across multiple channels including door knocking, texting, direct mail, and events
