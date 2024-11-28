@@ -21,6 +21,7 @@ A prototype for a React-based campaign management application designed to help p
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+[Directions to set up your environment](environment.md)
 ## Available Scripts
 
 In the project directory, you can run:
